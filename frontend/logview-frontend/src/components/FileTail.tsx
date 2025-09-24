@@ -54,16 +54,31 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
       const lineHeight = 20; // Approximate line height in pixels
       const linesToLoad = Math.max(50, Math.floor(viewerHeight / lineHeight));
       
-      // Fetch initial lines from the end of the file
+      // First, get the file info to determine total lines
       const response = await fetch(
-        `${file.server.url}/files/${file.path}/content?start_line=-${linesToLoad}&user=${encodeURIComponent(file.server.username)}`
+        `${file.server.url}/files/${file.path}/content?start_line=1&page_size=1&user=${encodeURIComponent(file.server.username)}`
       );
       
       if (response.ok) {
         const contentData = await response.json();
-        if (contentData.content && Array.isArray(contentData.content)) {
-          setLines(contentData.content);
-          setHasInitialLoad(true);
+        const totalLines = contentData.total_lines || 0;
+        
+        if (totalLines > 0) {
+          // Calculate start line to get the last N lines
+          const startLine = Math.max(1, totalLines - linesToLoad + 1);
+          
+          // Fetch the last lines
+          const tailResponse = await fetch(
+            `${file.server.url}/files/${file.path}/content?start_line=${startLine}&page_size=${linesToLoad}&user=${encodeURIComponent(file.server.username)}`
+          );
+          
+          if (tailResponse.ok) {
+            const tailData = await tailResponse.json();
+            if (tailData.content && Array.isArray(tailData.content)) {
+              setLines(tailData.content);
+              setHasInitialLoad(true);
+            }
+          }
         }
       }
     } catch (err) {
