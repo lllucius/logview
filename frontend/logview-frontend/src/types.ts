@@ -16,8 +16,34 @@ export interface ServerConfig {
   username: string;
 }
 
+export interface FullServerConfig {
+  id: string;
+  name: string;
+  host: string;
+  port: number;
+  base_path: string;
+  auth_header: string;
+  max_file_size: number;
+  default_page_size: number;
+  max_page_size: number;
+  tail_buffer_size: number;
+  tail_check_interval: number;
+  groups: Array<{
+    name: string;
+    pattern: string;
+    description: string;
+    users: string[];
+  }>;
+}
+
 export interface FrontendConfig {
-  servers: ServerConfig[];
+  servers: FullServerConfig[];
+  cors?: {
+    allow_origins: string[];
+    allow_credentials: boolean;
+    allow_methods: string[];
+    allow_headers: string[];
+  };
 }
 
 export interface FileWithServer extends FileInfo {

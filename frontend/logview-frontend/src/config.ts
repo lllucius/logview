@@ -1,11 +1,27 @@
 // Configuration loading utility for the frontend
 
-import { FrontendConfig, ServerConfig } from './types';
+import { FrontendConfig, ServerConfig, FullServerConfig } from './types';
 
 let configCache: FrontendConfig | null = null;
 
 /**
- * Load the frontend configuration from /config.json
+ * Convert a full server config to the simplified ServerConfig used by the API client
+ */
+function convertToServerConfig(fullServer: FullServerConfig): ServerConfig {
+  // Build URL from host and port
+  const protocol = 'http'; // Could be configurable in the future
+  const url = `${protocol}://${fullServer.host === '0.0.0.0' ? 'localhost' : fullServer.host}:${fullServer.port}`;
+  
+  return {
+    id: fullServer.id,
+    name: fullServer.name,
+    url: url,
+    username: 'admin' // This should ideally come from authentication
+  };
+}
+
+/**
+ * Load the frontend configuration from /config.json (static file)
  * @returns Promise<FrontendConfig>
  */
 export async function loadConfig(): Promise<FrontendConfig> {
@@ -29,9 +45,17 @@ export async function loadConfig(): Promise<FrontendConfig> {
       servers: [
         {
           id: 'default',
-          name: 'Log Server',
-          url: window.location.origin,
-          username: 'admin'
+          name: 'Local Server',
+          host: 'localhost',
+          port: 8000,
+          base_path: '/var/log',
+          auth_header: 'X-User',
+          max_file_size: 104857600,
+          default_page_size: 1000,
+          max_page_size: 10000,
+          tail_buffer_size: 1024,
+          tail_check_interval: 1.0,
+          groups: []
         }
       ]
     };
@@ -52,7 +76,7 @@ export async function getDefaultServer(): Promise<ServerConfig> {
     throw new Error('No servers configured');
   }
   
-  return config.servers[0];
+  return convertToServerConfig(config.servers[0]);
 }
 
 /**
@@ -61,5 +85,5 @@ export async function getDefaultServer(): Promise<ServerConfig> {
  */
 export async function getAllServers(): Promise<ServerConfig[]> {
   const config = await loadConfig();
-  return config.servers || [];
+  return config.servers.map(convertToServerConfig);
 }
