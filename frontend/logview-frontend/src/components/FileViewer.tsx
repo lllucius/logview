@@ -98,10 +98,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, open, onClose }) =
           </IconButton>
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h6" component="div">
-              {file.name}
-            </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.8 }}>
-              {file.server.name}
+              {file.server.name} : {file.name}
             </Typography>
           </Box>
           <IconButton color="inherit" onClick={handleRefresh} disabled={loading}>
