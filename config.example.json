@@ -1,0 +1,49 @@
+{
+  "servers": [
+    {
+      "id": "production",
+      "name": "Production Log Server",
+      "host": "0.0.0.0",
+      "port": 8000,
+      "base_path": "/var/log",
+      "auth_header": "X-User",
+      "max_file_size": 104857600,
+      "default_page_size": 1000,
+      "max_page_size": 10000,
+      "tail_buffer_size": 1024,
+      "tail_check_interval": 1.0,
+      "groups": [
+        {
+          "name": "system",
+          "pattern": "^(syslog|messages|auth\\.log|kern\\.log).*",
+          "description": "System log files",
+          "users": ["admin", "sysadmin"]
+        },
+        {
+          "name": "application",
+          "pattern": "^app/.*\\.log$",
+          "description": "Application log files",
+          "users": ["developer", "admin", "devops"]
+        },
+        {
+          "name": "web_server",
+          "pattern": "^(access|error)\\.log.*",
+          "description": "Web server logs",
+          "users": ["admin", "sysadmin", "webmaster"]
+        },
+        {
+          "name": "database",
+          "pattern": "^(mysql|postgres|db)/.*\\.log$",
+          "description": "Database logs",
+          "users": ["dba", "admin"]
+        }
+      ]
+    }
+  ],
+  "cors": {
+    "allow_origins": ["http://localhost:3000", "https://yourdomain.com"],
+    "allow_credentials": true,
+    "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allow_headers": ["*"]
+  }
+}

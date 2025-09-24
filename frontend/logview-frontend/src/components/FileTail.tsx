@@ -1,20 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-
-  Box,
-  Typography,
-  Paper,
-  IconButton,
+  AppBar,
   Toolbar,
+  IconButton,
+  Typography,
+  Box,
+  Paper,
   Divider,
   Switch,
   FormControlLabel,
 } from '@mui/material';
 import {
-  Close as CloseIcon,
+  ArrowBack as ArrowBackIcon,
   Clear as ClearIcon,
   Pause as PauseIcon,
   PlayArrow as PlayIcon,
@@ -122,37 +119,34 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
     onClose();
   };
 
+  if (!open || !file) return null;
+
   return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
-      maxWidth="lg"
-      fullWidth
-      PaperProps={{
-        sx: { height: '90vh' }
-      }}
-    >
-      <DialogTitle>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Box>
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <AppBar position="static">
+        <Toolbar>
+          <IconButton
+            edge="start"
+            color="inherit"
+            onClick={handleClose}
+            sx={{ mr: 2 }}
+          >
+            <ArrowBackIcon />
+          </IconButton>
+          <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h6" component="div">
-              Tail: {file?.name}
+              Tail: {file.name}
             </Typography>
-            <Typography variant="body2" color="textSecondary">
-              {file?.server.name} - {file?.path}
+            <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              {file.server.name} | Status: {isConnected ? 'Connected' : 'Disconnected'}
             </Typography>
           </Box>
-          <IconButton onClick={handleClose}>
-            <CloseIcon />
-          </IconButton>
-        </Box>
-      </DialogTitle>
+        </Toolbar>
+      </AppBar>
 
-      <Divider />
-
-      <Toolbar variant="dense">
+      <Toolbar variant="dense" sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Box display="flex" alignItems="center" gap={2} width="100%">
-          <IconButton onClick={handlePauseToggle} color={isPaused ? 'primary' : 'default'}>
+          <IconButton onClick={handlePauseToggle} disabled={!isConnected}>
             {isPaused ? <PlayIcon /> : <PauseIcon />}
           </IconButton>
 
@@ -183,18 +177,13 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
               }}
             />
             <Typography variant="body2" color="textSecondary">
-              {isConnected ? 'Connected' : 'Disconnected'}
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
               ({lines.length} lines)
             </Typography>
           </Box>
         </Box>
       </Toolbar>
 
-      <Divider />
-
-      <DialogContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 0 }}>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {error && (
           <Box p={2} bgcolor="error.light" color="error.contrastText">
             <Typography>{error}</Typography>
@@ -205,7 +194,7 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
           ref={contentRef}
           sx={{
             flex: 1,
-            m: 1,
+            m: 2,
             p: 2,
             fontFamily: 'monospace',
             fontSize: '0.875rem',
@@ -234,7 +223,8 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
             </Box>
           ))}
         </Paper>
-      </DialogContent>
-    </Dialog>
+      </Box>
+    </Box>
   );
+};
 };
