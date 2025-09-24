@@ -227,4 +227,3 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
     </Box>
   );
 };
-};

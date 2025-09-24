@@ -9,7 +9,6 @@ FastAPI application for remote log file viewing with group-based access control.
 - **RESTful API**: Full OpenAPI documentation with comprehensive endpoints
 - **Real-time Tailing**: Server-Sent Events (SSE) for live log monitoring
 - **Pagination Support**: Handle large files efficiently with pagination
-- **Docker Ready**: Containerized deployment with docker-compose
 
 ## Quick Start
 
@@ -100,13 +99,6 @@ Each server can have multiple groups with different access patterns:
 python -m logview.main
 
 # The configuration file location is automatically detected
-```
-
-### Docker Deployment
-
-```bash
-# Build and run with docker-compose
-docker-compose up -d
 ```
 
 ## API Endpoints

@@ -174,7 +174,7 @@ async def list_files(
     directory: str = Query(
         default="",
         description="Directory path relative to base path (empty for root)",
-        example="app/logs",
+        examples="app/logs",
     ),
     current_user: str = Depends(get_current_user),
 ) -> FileListResponse:
@@ -214,14 +214,14 @@ async def get_file(
         default=1,
         ge=1,
         description="Starting line number (1-based)",
-        example=1,
+        examples=1,
     ),
     page_size: Optional[int] = Query(
         default=None,
         ge=1,
         le=10000,
         description="Number of lines to return (default from config)",
-        example=1000,
+        examples=1000,
     ),
     current_user: str = Depends(get_current_user),
 ) -> FileContentResponse:

@@ -133,6 +133,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, open, onClose }) =
           <IconButton onClick={handleRefresh} disabled={loading}>
             <RefreshIcon />
           </IconButton>
+        </Box>
       </Toolbar>
 
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
