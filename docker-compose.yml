@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  logview:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - LOGVIEW_BASE_PATH=/var/log
+      - LOGVIEW_HOST=0.0.0.0
+      - LOGVIEW_PORT=8000
+    volumes:
+      - /var/log:/var/log:ro  # Mount host logs read-only
+      - ./test_logs:/var/log/test:ro  # Mount test logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
