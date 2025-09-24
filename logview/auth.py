@@ -8,8 +8,6 @@ from fastapi.security.base import SecurityBase
 
 from .config import get_accessible_groups_for_file, get_user_groups, settings
 
-print("DEBUG: auth.py module loaded with updated code!")
-
 
 class UserHeaderAuth(SecurityBase):
     """Authentication via HTTP header containing username."""
@@ -62,27 +60,17 @@ def get_current_user_sse(request: Request) -> str:
     Raises:
         HTTPException: If no user is found in query param or header
     """
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    # Debug logging to understand the issue
-    logger.error(f"SSE Auth DEBUG - Query params: {dict(request.query_params)}")
-    logger.error(f"SSE Auth DEBUG - Auth header: {request.headers.get(settings.auth_header)}")
-    
     # First try query parameter (for SSE)
     user_param = request.query_params.get("user")
     if user_param and user_param.strip():
-        logger.error(f"SSE Auth DEBUG - Using query param user: {user_param}")
         return user_param.strip()
     
     # Try header-based auth
     header_user = request.headers.get(settings.auth_header)
     if header_user and header_user.strip():
-        logger.error(f"SSE Auth DEBUG - Using header user: {header_user}")
         return header_user.strip()
     
     # If neither works, raise error
-    logger.error(f"SSE Auth DEBUG - No user found in query param or header")
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail=f"Missing required header: {settings.auth_header} or query parameter 'user'",
