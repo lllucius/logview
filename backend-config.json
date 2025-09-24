@@ -11,7 +11,7 @@
   "groups": [
     {
       "name": "system",
-      "pattern": "^(syslog|messages|auth\\.log|kern\\.log).*",
+      "pattern": ".*",
       "description": "System log files",
       "users": ["admin"]
     },
