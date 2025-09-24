@@ -42,20 +42,16 @@ export async function loadConfig(): Promise<FrontendConfig> {
     
     // Fallback to hardcoded config if loading fails
     const fallbackConfig: FrontendConfig = {
+      frontend: {
+        host: 'localhost',
+        port: 3000
+      },
       servers: [
         {
           id: 'default',
           name: 'Local Server',
           host: 'localhost',
-          port: 8000,
-          base_path: '/var/log',
-          auth_header: 'X-User',
-          max_file_size: 104857600,
-          default_page_size: 1000,
-          max_page_size: 10000,
-          tail_buffer_size: 1024,
-          tail_check_interval: 1.0,
-          groups: []
+          port: 8000
         }
       ]
     };
@@ -86,4 +82,18 @@ export async function getDefaultServer(): Promise<ServerConfig> {
 export async function getAllServers(): Promise<ServerConfig[]> {
   const config = await loadConfig();
   return config.servers.map(convertToServerConfig);
+}
+
+/**
+ * Get the frontend configuration (host and port for serving)
+ * @returns Promise<{host: string, port: number}>
+ */
+export async function getFrontendConfig(): Promise<{host: string, port: number}> {
+  const config = await loadConfig();
+  
+  // Return configured frontend settings or defaults
+  return config.frontend || {
+    host: 'localhost',
+    port: 3000
+  };
 }
