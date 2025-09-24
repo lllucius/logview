@@ -101,14 +101,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, open, onClose }) =
               {file.server.name} : {file.name}
             </Typography>
           </Box>
-          <IconButton color="inherit" onClick={handleRefresh} disabled={loading}>
-            <RefreshIcon />
-          </IconButton>
-        </Toolbar>
-      </AppBar>
-
-      <Toolbar variant="dense" sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Box display="flex" alignItems="center" gap={2} width="100%">
+          
           <TextField
             label="Page Size"
             type="number"
@@ -116,22 +109,41 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, open, onClose }) =
             onChange={handlePageSizeChange}
             size="small"
             inputProps={{ min: 1, max: 1000 }}
-            sx={{ width: 120 }}
+            sx={{ 
+              width: 120,
+              mr: 2,
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                '& fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.3)',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.5)',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'rgba(255, 255, 255, 0.7)',
+                },
+              },
+              '& .MuiInputLabel-root': {
+                color: 'rgba(255, 255, 255, 0.7)',
+              },
+              '& .MuiOutlinedInput-input': {
+                color: 'white',
+              },
+            }}
           />
           
           {content && (
-            <Typography variant="body2" color="textSecondary">
+            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)', mr: 2, fontSize: '0.875rem' }}>
               Lines {content.start_line}-{content.start_line + content.content.length - 1} of {content.total_lines}
             </Typography>
           )}
 
-          <Box flex={1} />
-
-          <IconButton onClick={handleRefresh} disabled={loading}>
+          <IconButton color="inherit" onClick={handleRefresh} disabled={loading}>
             <RefreshIcon />
           </IconButton>
-        </Box>
-      </Toolbar>
+        </Toolbar>
+      </AppBar>
 
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {loading && (
