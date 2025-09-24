@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from .auth import get_current_user, get_current_user_sse, require_file_access, user_header_auth
-from .config import app_config, get_user_groups, settings
+from .config import backend_config, get_user_groups, settings
 from .file_service import FileInfo, file_service
 
 # Set up logging
@@ -83,10 +83,10 @@ app = FastAPI(
 # Add CORS middleware to allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=app_config.cors.allow_origins,
-    allow_credentials=app_config.cors.allow_credentials,
-    allow_methods=app_config.cors.allow_methods,
-    allow_headers=app_config.cors.allow_headers,
+    allow_origins=backend_config.cors.allow_origins,
+    allow_credentials=backend_config.cors.allow_credentials,
+    allow_methods=backend_config.cors.allow_methods,
+    allow_headers=backend_config.cors.allow_headers,
 )
 
 
@@ -311,45 +311,6 @@ async def tail_file(
     )
 
 
-@app.get("/config/groups")
-async def get_groups(
-    request: Request,
-    current_user: str = Depends(get_current_user),
-) -> Dict:
-    """Get information about available groups and user access.
-    
-    This endpoint returns information about all configured groups and
-    indicates which ones the current user has access to. This can be
-    useful for understanding the access control structure.
-    
-    Args:
-        request: FastAPI request object
-        current_user: Current authenticated user from header
-        
-    Returns:
-        Dictionary containing group information and user access details
-    """
-    user_groups = get_user_groups(current_user)
-    
-    groups_info = []
-    for group in settings.groups:
-        group_info = {
-            "name": group.name,
-            "pattern": group.pattern,
-            "description": group.description,
-            "user_has_access": group.name in user_groups,
-        }
-        # Only include user list if the user has access to the group
-        if group.name in user_groups:
-            group_info["users"] = group.users
-        groups_info.append(group_info)
-    
-    return {
-        "groups": groups_info,
-        "user_groups": user_groups,
-        "base_path": str(settings.base_path),
-    }
-
 
 @app.get("/files/{file_path:path}/download")
 async def download_file(
@@ -414,8 +375,8 @@ def main() -> None:
     
     uvicorn.run(
         "logview.main:app",
-        host=settings.host,
-        port=settings.port,
+        host=backend_config.host,
+        port=backend_config.port,
         reload=False,
         access_log=True,
     )
