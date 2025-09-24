@@ -158,7 +158,7 @@ export const FileList: React.FC<FileListProps> = ({
         </TableHead>
         <TableBody>
           {sortedFiles.map((file, index) => (
-            <TableRow key={`${file.server.id}-${file.path}`} hover>
+            <TableRow key={`${file.server?.id || 'unknown'}-${file.path || file.name || index}`} hover>
               <TableCell>
                 <Chip label={file.server.name} color="primary" size="small" />
               </TableCell>
