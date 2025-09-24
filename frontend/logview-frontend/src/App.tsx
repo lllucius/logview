@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import {
   ThemeProvider,
   createTheme,
@@ -11,9 +11,12 @@ import {
   Button,
   Alert,
   Snackbar,
+  IconButton,
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
+  DarkMode as DarkModeIcon,
+  LightMode as LightModeIcon,
 } from '@mui/icons-material';
 import { FileList } from './components/FileList';
 import { FileViewer } from './components/FileViewer';
@@ -22,19 +25,28 @@ import { FileWithServer, ServerConfig } from './types';
 import { LogViewAPI } from './api';
 import { getDefaultServer } from './config';
 
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-  },
-});
+// Theme context for sharing theme state
+interface ThemeContextType {
+  darkMode: boolean;
+  toggleTheme: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme must be used within ThemeProvider');
+  }
+  return context;
+};
 
 function App() {
+  const [darkMode, setDarkMode] = useState(() => {
+    // Check localStorage for saved theme preference
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
   const [files, setFiles] = useState<FileWithServer[]>([]);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
@@ -44,6 +56,50 @@ function App() {
   const [selectedFile, setSelectedFile] = useState<FileWithServer | null>(null);
   const [server, setServer] = useState<ServerConfig | null>(null);
   const [api, setApi] = useState<LogViewAPI | null>(null);
+
+  const toggleTheme = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    localStorage.setItem('darkMode', JSON.stringify(newDarkMode));
+  };
+
+  const theme = createTheme({
+    palette: {
+      mode: darkMode ? 'dark' : 'light',
+      primary: {
+        main: '#1976d2',
+      },
+      secondary: {
+        main: '#dc004e',
+      },
+    },
+    typography: {
+      fontSize: 13, // Make text more compact
+    },
+    components: {
+      MuiTableCell: {
+        styleOverrides: {
+          root: {
+            padding: '8px 16px', // More compact table cells
+          },
+        },
+      },
+      MuiTableRow: {
+        styleOverrides: {
+          root: {
+            height: 48, // More compact row height
+          },
+        },
+      },
+      MuiToolbar: {
+        styleOverrides: {
+          dense: {
+            minHeight: 40, // More compact toolbar
+          },
+        },
+      },
+    },
+  });
 
   // Load configuration on startup
   useEffect(() => {
@@ -126,102 +182,111 @@ function App() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      
-      {/* Show loading during initialization */}
-      {initializing && (
-        <Container maxWidth="md" sx={{ mt: 8, textAlign: 'center' }}>
-          <Typography variant="h4" gutterBottom>
-            LogView - Log File Viewer
-          </Typography>
-          <Typography variant="body1" color="textSecondary">
-            Loading configuration...
-          </Typography>
-        </Container>
-      )}
-      
-      {/* Show error if configuration failed to load */}
-      {!initializing && error && !server && (
-        <Container maxWidth="md" sx={{ mt: 8 }}>
-          <Alert severity="error" sx={{ mb: 2 }}>
+    <ThemeContext.Provider value={{ darkMode, toggleTheme }}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        
+        {/* Show loading during initialization */}
+        {initializing && (
+          <Container maxWidth="md" sx={{ mt: 8, textAlign: 'center' }}>
+            <Typography variant="h5" gutterBottom>
+              LogView - Log File Viewer
+            </Typography>
+            <Typography variant="body2" color="textSecondary">
+              Loading configuration...
+            </Typography>
+          </Container>
+        )}
+        
+        {/* Show error if configuration failed to load */}
+        {!initializing && error && !server && (
+          <Container maxWidth="md" sx={{ mt: 8 }}>
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+            <Typography variant="body2" color="textSecondary">
+              Please check the application configuration.
+            </Typography>
+          </Container>
+        )}
+        
+        {/* Only show main UI when not in viewer/tail mode and config is loaded */}
+        {!initializing && server && !viewerOpen && !tailOpen && (
+          <>
+            <AppBar position="static">
+              <Toolbar>
+                <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                  LogView - Log File Viewer
+                </Typography>
+                <IconButton
+                  color="inherit"
+                  onClick={toggleTheme}
+                  sx={{ mr: 2 }}
+                >
+                  {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
+                </IconButton>
+                <Button
+                  color="inherit"
+                  startIcon={<RefreshIcon />}
+                  onClick={loadFiles}
+                  disabled={loading || !api}
+                >
+                  Refresh
+                </Button>
+              </Toolbar>
+            </AppBar>
+
+            <Container maxWidth="xl" sx={{ mt: 1, px: 1 }}>
+              <Box mb={1}>
+                <Typography variant="h6" gutterBottom>
+                  Log Files ({files.length})
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Files available on server: {files.length}
+                </Typography>
+              </Box>
+
+              <FileList
+                files={files}
+                onDownload={handleDownload}
+                onView={handleView}
+                onTail={handleTail}
+                loading={loading}
+              />
+            </Container>
+          </>
+        )}
+
+        <FileViewer
+          file={selectedFile}
+          open={viewerOpen}
+          onClose={() => {
+            setViewerOpen(false);
+            setSelectedFile(null);
+          }}
+        />
+
+        <FileTail
+          file={selectedFile}
+          open={tailOpen}
+          onClose={() => {
+            setTailOpen(false);
+            setSelectedFile(null);
+          }}
+        />
+
+        <Snackbar
+          open={!!error}
+          autoHideDuration={6000}
+          onClose={handleCloseError}
+          message={error}
+        >
+          <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
             {error}
           </Alert>
-          <Typography variant="body1" color="textSecondary">
-            Please check the application configuration.
-          </Typography>
-        </Container>
-      )}
-      
-      {/* Only show main UI when not in viewer/tail mode and config is loaded */}
-      {!initializing && server && !viewerOpen && !tailOpen && (
-        <>
-          <AppBar position="static">
-            <Toolbar>
-              <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                LogView - Log File Viewer
-              </Typography>
-              <Button
-                color="inherit"
-                startIcon={<RefreshIcon />}
-                onClick={loadFiles}
-                disabled={loading || !api}
-              >
-                Refresh
-              </Button>
-            </Toolbar>
-          </AppBar>
-
-          <Container maxWidth="xl" sx={{ mt: 2 }}>
-            <Box mb={2}>
-              <Typography variant="h5" gutterBottom>
-                Log Files ({files.length})
-              </Typography>
-              <Typography variant="body2" color="textSecondary">
-                Files available on server: {files.length}
-              </Typography>
-            </Box>
-
-            <FileList
-              files={files}
-              onDownload={handleDownload}
-              onView={handleView}
-              onTail={handleTail}
-              loading={loading}
-            />
-          </Container>
-        </>
-      )}
-
-      <FileViewer
-        file={selectedFile}
-        open={viewerOpen}
-        onClose={() => {
-          setViewerOpen(false);
-          setSelectedFile(null);
-        }}
-      />
-
-      <FileTail
-        file={selectedFile}
-        open={tailOpen}
-        onClose={() => {
-          setTailOpen(false);
-          setSelectedFile(null);
-        }}
-      />
-
-      <Snackbar
-        open={!!error}
-        autoHideDuration={6000}
-        onClose={handleCloseError}
-        message={error}
-      >
-        <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
-          {error}
-        </Alert>
-      </Snackbar>
-    </ThemeProvider>
+        </Snackbar>
+      </ThemeProvider>
+    </ThemeContext.Provider>
   );
 }
 
