@@ -103,6 +103,62 @@ class ServerConfig(BaseModel):
         return v
 
 
+class BackendConfig(BaseModel):
+    """Backend-only configuration without groups."""
+    
+    host: str = Field(default="0.0.0.0", description="Host to bind the server to")
+    port: int = Field(default=8000, description="Port to bind the server to")
+    
+    # Base path configuration
+    base_path: Path = Field(
+        default=Path("/var/log"),
+        description="Base directory path where all log files are anchored"
+    )
+    
+    # Authentication configuration
+    auth_header: str = Field(
+        default="X-User",
+        description="HTTP header containing the authenticated username"
+    )
+    
+    # File handling configuration
+    max_file_size: int = Field(
+        default=100 * 1024 * 1024,  # 100MB
+        description="Maximum file size to serve (in bytes)"
+    )
+    default_page_size: int = Field(
+        default=1000,
+        description="Default number of lines per page for file content"
+    )
+    max_page_size: int = Field(
+        default=10000,
+        description="Maximum number of lines per page for file content"
+    )
+    tail_buffer_size: int = Field(
+        default=1024,
+        description="Buffer size for tail operations (in bytes)"
+    )
+    tail_check_interval: float = Field(
+        default=1.0,
+        description="Interval between file checks for tail operations (in seconds)"
+    )
+    
+    cors: CORSConfig = Field(
+        default_factory=CORSConfig,
+        description="CORS configuration"
+    )
+    
+    @validator('base_path')
+    def validate_base_path(cls, v: Path) -> Path:
+        """Validate that base path exists and is a directory."""
+        path = Path(v) if isinstance(v, str) else v
+        if not path.exists():
+            raise ValueError(f"Base path does not exist: {path}")
+        if not path.is_dir():
+            raise ValueError(f"Base path is not a directory: {path}")
+        return path.resolve()  # Convert to absolute path
+
+
 class AppConfig(BaseModel):
     """Main application configuration."""
     
@@ -124,6 +180,38 @@ class AppConfig(BaseModel):
         if len(ids) != len(set(ids)):
             raise ValueError("Server IDs must be unique")
         return v
+
+
+def load_backend_config(config_path: Optional[Path] = None) -> BackendConfig:
+    """Load backend configuration from JSON file.
+    
+    Args:
+        config_path: Path to the configuration file. If None, looks for backend-config.json
+                    in the package directory.
+    
+    Returns:
+        Loaded backend configuration
+    
+    Raises:
+        FileNotFoundError: If config file is not found
+        ValueError: If config file is invalid
+    """
+    if config_path is None:
+        # Look for backend-config.json in the package directory
+        package_dir = Path(__file__).parent.parent
+        config_path = package_dir / "backend-config.json"
+    
+    if not config_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return BackendConfig(**data)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in configuration file: {e}")
+    except Exception as e:
+        raise ValueError(f"Invalid configuration: {e}")
 
 
 def load_config(config_path: Optional[Path] = None) -> AppConfig:
@@ -167,8 +255,12 @@ def _get_default_server() -> ServerConfig:
 
 
 # Global configuration instance
-app_config = load_config()
-settings = _get_default_server()  # For backward compatibility
+backend_config = load_backend_config()
+app_config = load_config()  # Load full config for group information
+settings = backend_config  # Use backend config as operational settings
+
+# Keep the group-related functionality for backend authorization
+_default_server_with_groups = _get_default_server()
 
 
 def file_matches_group(file_path: str, group: GroupConfig) -> bool:
@@ -194,7 +286,7 @@ def get_user_groups(username: str, server_id: Optional[str] = None) -> List[str]
     Returns:
         List of group names the user can access
     """
-    server = _get_server_by_id(server_id) if server_id else settings
+    server = _get_server_by_id(server_id) if server_id else _default_server_with_groups
     return [group.name for group in server.groups if username in group.users]
 
 
@@ -208,7 +300,7 @@ def get_group_by_name(group_name: str, server_id: Optional[str] = None) -> Optio
     Returns:
         GroupConfig if found, None otherwise
     """
-    server = _get_server_by_id(server_id) if server_id else settings
+    server = _get_server_by_id(server_id) if server_id else _default_server_with_groups
     for group in server.groups:
         if group.name == group_name:
             return group
