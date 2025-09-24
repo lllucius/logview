@@ -104,7 +104,7 @@ class ServerConfig(BaseModel):
 
 
 class BackendConfig(BaseModel):
-    """Backend-only configuration without groups."""
+    """Backend configuration with groups for authorization."""
     
     host: str = Field(default="0.0.0.0", description="Host to bind the server to")
     port: int = Field(default=8000, description="Port to bind the server to")
@@ -143,6 +143,12 @@ class BackendConfig(BaseModel):
         description="Interval between file checks for tail operations (in seconds)"
     )
     
+    # File group configurations for authorization
+    groups: List[GroupConfig] = Field(
+        default_factory=list,
+        description="List of file groups with access control"
+    )
+    
     cors: CORSConfig = Field(
         default_factory=CORSConfig,
         description="CORS configuration"
@@ -157,6 +163,14 @@ class BackendConfig(BaseModel):
         if not path.is_dir():
             raise ValueError(f"Base path is not a directory: {path}")
         return path.resolve()  # Convert to absolute path
+    
+    @validator('groups')
+    def validate_groups(cls, v: List[GroupConfig]) -> List[GroupConfig]:
+        """Validate that group names are unique."""
+        names = [group.name for group in v]
+        if len(names) != len(set(names)):
+            raise ValueError("Group names must be unique")
+        return v
 
 
 class AppConfig(BaseModel):
@@ -246,21 +260,9 @@ def load_config(config_path: Optional[Path] = None) -> AppConfig:
         raise ValueError(f"Invalid configuration: {e}")
 
 
-# Legacy compatibility - use the first server as default
-def _get_default_server() -> ServerConfig:
-    """Get the default server configuration for legacy compatibility."""
-    if not app_config.servers:
-        raise ValueError("No servers configured")
-    return app_config.servers[0]
-
-
-# Global configuration instance
+# Global configuration instance - use only backend config
 backend_config = load_backend_config()
-app_config = load_config()  # Load full config for group information
 settings = backend_config  # Use backend config as operational settings
-
-# Keep the group-related functionality for backend authorization
-_default_server_with_groups = _get_default_server()
 
 
 def file_matches_group(file_path: str, group: GroupConfig) -> bool:
@@ -276,81 +278,49 @@ def file_matches_group(file_path: str, group: GroupConfig) -> bool:
     return bool(re.match(group.pattern, file_path))
 
 
-def get_user_groups(username: str, server_id: Optional[str] = None) -> List[str]:
+def get_user_groups(username: str) -> List[str]:
     """Get list of group names that a user has access to.
     
     Args:
         username: The username to check access for
-        server_id: Server ID to get groups for. If None, uses default server.
         
     Returns:
         List of group names the user can access
     """
-    server = _get_server_by_id(server_id) if server_id else _default_server_with_groups
-    return [group.name for group in server.groups if username in group.users]
+    return [group.name for group in backend_config.groups if username in group.users]
 
 
-def get_group_by_name(group_name: str, server_id: Optional[str] = None) -> Optional[GroupConfig]:
+def get_group_by_name(group_name: str) -> Optional[GroupConfig]:
     """Get group configuration by name.
     
     Args:
         group_name: Name of the group to retrieve
-        server_id: Server ID to get groups for. If None, uses default server.
         
     Returns:
         GroupConfig if found, None otherwise
     """
-    server = _get_server_by_id(server_id) if server_id else _default_server_with_groups
-    for group in server.groups:
+    for group in backend_config.groups:
         if group.name == group_name:
             return group
     return None
 
 
-def get_accessible_groups_for_file(username: str, file_path: str, server_id: Optional[str] = None) -> List[str]:
+def get_accessible_groups_for_file(username: str, file_path: str) -> List[str]:
     """Get list of groups that both match the file and are accessible to the user.
     
     Args:
         username: Username to check access for
         file_path: Relative file path from base_path
-        server_id: Server ID to get groups for. If None, uses default server.
         
     Returns:
         List of group names that match the file and are accessible to the user
     """
-    user_groups = get_user_groups(username, server_id)
+    user_groups = get_user_groups(username)
     matching_groups = []
     
     for group_name in user_groups:
-        group = get_group_by_name(group_name, server_id)
+        group = get_group_by_name(group_name)
         if group and file_matches_group(file_path, group):
             matching_groups.append(group_name)
     
     return matching_groups
-
-
-def _get_server_by_id(server_id: str) -> ServerConfig:
-    """Get server configuration by ID.
-    
-    Args:
-        server_id: ID of the server to retrieve
-        
-    Returns:
-        ServerConfig if found
-        
-    Raises:
-        ValueError: If server ID is not found
-    """
-    for server in app_config.servers:
-        if server.id == server_id:
-            return server
-    raise ValueError(f"Server not found: {server_id}")
-
-
-def get_all_servers() -> List[ServerConfig]:
-    """Get all configured servers.
-    
-    Returns:
-        List of all server configurations
-    """
-    return app_config.servers
