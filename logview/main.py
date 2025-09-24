@@ -4,10 +4,11 @@ import json
 from typing import Dict, List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from .auth import get_current_user, require_file_access, user_header_auth
+from .auth import get_current_user, get_current_user_sse, require_file_access, user_header_auth
 from .config import get_user_groups, settings
 from .file_service import FileInfo, file_service
 
@@ -72,6 +73,15 @@ app = FastAPI(
         "name": "MIT",
         "url": "https://opensource.org/licenses/MIT",
     },
+)
+
+# Add CORS middleware to allow frontend access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify actual frontend origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -214,7 +224,7 @@ async def get_file(
 async def tail_file(
     file_path: str,
     request: Request,
-    current_user: str = Depends(get_current_user),
+    current_user: str = Depends(get_current_user_sse),
 ) -> StreamingResponse:
     """Tail a file using Server-Sent Events (SSE).
     
@@ -298,6 +308,63 @@ async def get_groups(
         "user_groups": user_groups,
         "base_path": str(settings.base_path),
     }
+
+
+@app.get("/files/{file_path:path}/download")
+async def download_file(
+    file_path: str,
+    request: Request,
+    current_user: str = Depends(get_current_user),
+):
+    """Download a file that the user has access to.
+    
+    This endpoint allows downloading of files that the user has access to.
+    The file is returned as an attachment with appropriate headers.
+    
+    Args:
+        file_path: Path to the file relative to the configured base path
+        request: FastAPI request object
+        current_user: Current authenticated user from header
+        
+    Returns:
+        File download response
+        
+    Raises:
+        HTTPException: If file access is denied, file not found, or other errors
+    """
+    from fastapi.responses import FileResponse
+    import os
+    
+    # Check access using existing file service
+    try:
+        # Verify access by trying to get file info
+        file_service.get_file_content(current_user, file_path, 1, 1)
+        
+        # Get the actual file path
+        absolute_path = file_service._get_absolute_path(file_path)
+        
+        if not absolute_path.exists() or not absolute_path.is_file():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found"
+            )
+        
+        # Get filename for download
+        filename = os.path.basename(file_path)
+        
+        return FileResponse(
+            path=str(absolute_path),
+            filename=filename,
+            media_type='application/octet-stream'
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error downloading file: {str(e)}"
+        )
 
 
 def main() -> None:

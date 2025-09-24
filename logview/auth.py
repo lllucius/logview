@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request, status, Query
 from fastapi.security import HTTPBearer
 from fastapi.security.base import SecurityBase
 
@@ -43,6 +43,30 @@ def get_current_user(request: Request) -> str:
             headers={"WWW-Authenticate": "UserHeader"},
         )
     return user.strip()
+
+
+def get_current_user_sse(request: Request, user: Optional[str] = Query(None)) -> str:
+    """Extract the current user for SSE endpoints from query param or header.
+    
+    This function supports both header-based and query parameter authentication
+    for SSE endpoints since EventSource doesn't support custom headers.
+    
+    Args:
+        request: FastAPI request object
+        user: Username from query parameter
+        
+    Returns:
+        Username from query parameter or header
+        
+    Raises:
+        HTTPException: If no user is found in query param or header
+    """
+    # First try query parameter (for SSE)
+    if user:
+        return user.strip()
+    
+    # Fallback to header-based auth
+    return get_current_user(request)
 
 
 def check_user_has_groups(username: str) -> bool:
