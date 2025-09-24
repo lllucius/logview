@@ -13,6 +13,8 @@ from .auth import get_current_user, get_current_user_sse, require_file_access, u
 from .config import backend_config, get_user_groups, settings
 from .file_service import FileInfo, file_service
 
+print("DEBUG: main.py module loaded with updated code!")
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -290,6 +292,8 @@ async def tail_file(
     Raises:
         HTTPException: If file access is denied, file not found, or other errors
     """
+    logger.error(f"TAIL ENDPOINT DEBUG - current_user: {current_user}")
+    
     async def generate_sse():
         """Generate Server-Sent Events for file tail."""
         try:

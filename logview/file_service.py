@@ -86,7 +86,7 @@ class FileService:
         
         # Ensure the path is within base_path
         try:
-            absolute_path.relative_to(self.base_path)
+            absolute_path.relative_to(self.base_path.resolve())
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
