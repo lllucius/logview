@@ -45,7 +45,7 @@ def get_current_user(request: Request) -> str:
     return user.strip()
 
 
-def get_current_user_sse(request: Request, user: Optional[str] = Query(None)) -> str:
+def get_current_user_sse(request: Request) -> str:
     """Extract the current user for SSE endpoints from query param or header.
     
     This function supports both header-based and query parameter authentication
@@ -53,7 +53,6 @@ def get_current_user_sse(request: Request, user: Optional[str] = Query(None)) ->
     
     Args:
         request: FastAPI request object
-        user: Username from query parameter
         
     Returns:
         Username from query parameter or header
@@ -62,11 +61,21 @@ def get_current_user_sse(request: Request, user: Optional[str] = Query(None)) ->
         HTTPException: If no user is found in query param or header
     """
     # First try query parameter (for SSE)
-    if user:
-        return user.strip()
+    user_param = request.query_params.get("user")
+    if user_param and user_param.strip():
+        return user_param.strip()
     
-    # Fallback to header-based auth
-    return get_current_user(request)
+    # Try header-based auth
+    header_user = request.headers.get(settings.auth_header)
+    if header_user and header_user.strip():
+        return header_user.strip()
+    
+    # If neither works, raise error
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=f"Missing required header: {settings.auth_header} or query parameter 'user'",
+        headers={"WWW-Authenticate": "UserHeader"},
+    )
 
 
 def check_user_has_groups(username: str) -> bool:

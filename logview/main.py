@@ -206,61 +206,6 @@ async def list_files(
     )
 
 
-@app.get("/files/{file_path:path}", response_model=FileContentResponse)
-async def get_file(
-    file_path: str,
-    request: Request,
-    start_line: int = Query(
-        default=1,
-        ge=1,
-        description="Starting line number (1-based)",
-        examples=1,
-    ),
-    page_size: Optional[int] = Query(
-        default=None,
-        ge=1,
-        le=10000,
-        description="Number of lines to return (default from config)",
-        examples=1000,
-    ),
-    current_user: str = Depends(get_current_user),
-) -> FileContentResponse:
-    """Get file content with pagination support.
-    
-    This endpoint returns the content of a file that the user has access to,
-    with support for pagination through large files. The response includes
-    the requested lines, pagination metadata, and information about whether
-    more content is available.
-    
-    Args:
-        file_path: Path to the file relative to the configured base path
-        request: FastAPI request object
-        start_line: Starting line number (1-based)
-        page_size: Number of lines to return (uses default if not specified)
-        current_user: Current authenticated user from header
-        
-    Returns:
-        File content with pagination metadata
-        
-    Raises:
-        HTTPException: If file access is denied, file not found, or other errors
-    """
-    lines, total_lines, has_more = file_service.get_file_content(
-        current_user, file_path, start_line, page_size
-    )
-    
-    actual_page_size = page_size if page_size is not None else settings.default_page_size
-    
-    return FileContentResponse(
-        content=lines,
-        file_path=file_path,
-        start_line=start_line,
-        page_size=actual_page_size,
-        total_lines=total_lines,
-        has_more=has_more,
-    )
-
-
 @app.get("/files/{file_path:path}/tail")
 async def tail_file(
     file_path: str,
@@ -282,7 +227,7 @@ async def tail_file(
     Args:
         file_path: Path to the file relative to the configured base path
         request: FastAPI request object
-        current_user: Current authenticated user from header
+        current_user: Current authenticated user from header or query parameter
         
     Returns:
         StreamingResponse with Server-Sent Events containing new file lines
@@ -309,7 +254,6 @@ async def tail_file(
             "X-Accel-Buffering": "no",  # Disable nginx buffering
         },
     )
-
 
 
 @app.get("/files/{file_path:path}/download")
@@ -367,6 +311,79 @@ async def download_file(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error downloading file: {str(e)}"
         )
+
+
+@app.get("/files/{file_path:path}", response_model=FileContentResponse)
+async def get_file(
+    file_path: str,
+    request: Request,
+    start_line: int = Query(
+        default=1,
+        ge=1,
+        description="Starting line number (1-based)",
+        examples=1,
+    ),
+    page_size: Optional[int] = Query(
+        default=None,
+        ge=1,
+        le=10000,
+        description="Number of lines to return (default from config)",
+        examples=1000,
+    ),
+    current_user: str = Depends(get_current_user),
+) -> FileContentResponse:
+    """Get file content with pagination support.
+    
+    This endpoint returns the content of a file that the user has access to,
+    with support for pagination through large files. The response includes
+    the requested lines, pagination metadata, and information about whether
+    more content is available.
+    
+    Args:
+        file_path: Path to the file relative to the configured base path
+        request: FastAPI request object
+        start_line: Starting line number (1-based)
+        page_size: Number of lines to return (uses default if not specified)
+        current_user: Current authenticated user from header
+        
+    Returns:
+        File content with pagination metadata
+        
+    Raises:
+        HTTPException: If file access is denied, file not found, or other errors
+    """
+    lines, total_lines, has_more = file_service.get_file_content(
+        current_user, file_path, start_line, page_size
+    )
+    
+    actual_page_size = page_size if page_size is not None else settings.default_page_size
+    
+    return FileContentResponse(
+        content=lines,
+        file_path=file_path,
+        start_line=start_line,
+        page_size=actual_page_size,
+        total_lines=total_lines,
+        has_more=has_more,
+    )
+
+
+@app.get("/test-tail")
+async def test_tail_endpoint(
+    request: Request,
+    current_user: str = Depends(get_current_user_sse),
+):
+    """Test tail endpoint without path parameter."""
+    return {"message": "Tail auth working", "user": current_user}
+
+
+@app.get("/test-auth")
+async def test_auth_endpoint(
+    request: Request,
+    current_user: str = Depends(get_current_user_sse),
+):
+    """Test endpoint to verify SSE auth is working."""
+    return {"message": "SSE auth working", "user": current_user}
 
 
 def main() -> None:
