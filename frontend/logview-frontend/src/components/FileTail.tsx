@@ -6,7 +6,6 @@ import {
   Typography,
   Box,
   Paper,
-  Divider,
   Switch,
   FormControlLabel,
 } from '@mui/material';

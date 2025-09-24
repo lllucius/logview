@@ -8,8 +8,6 @@ import {
   Paper,
   Pagination,
   TextField,
-  Divider,
-  Container,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
