@@ -8,12 +8,14 @@ import {
   Paper,
   Switch,
   FormControlLabel,
+  useTheme,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
   Clear as ClearIcon,
   Pause as PauseIcon,
   PlayArrow as PlayIcon,
+  Stop as StopIcon,
 } from '@mui/icons-material';
 import { FileWithServer } from '../types';
 
@@ -27,10 +29,13 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
   const [lines, setLines] = useState<string[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isStopped, setIsStopped] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasInitialLoad, setHasInitialLoad] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const theme = useTheme();
 
   const disconnectFromTail = () => {
     if (eventSourceRef.current) {
@@ -40,8 +45,49 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
     setIsConnected(false);
   };
 
+  const loadInitialLines = useCallback(async () => {
+    if (!file || hasInitialLoad) return;
+
+    try {
+      // Calculate approximate lines needed to fill the viewer
+      const viewerHeight = contentRef.current?.clientHeight || 500;
+      const lineHeight = 20; // Approximate line height in pixels
+      const linesToLoad = Math.max(50, Math.floor(viewerHeight / lineHeight));
+      
+      // First, get the file info to determine total lines
+      const response = await fetch(
+        `${file.server.url}/files/${file.path}/content?start_line=1&page_size=1&user=${encodeURIComponent(file.server.username)}`
+      );
+      
+      if (response.ok) {
+        const contentData = await response.json();
+        const totalLines = contentData.total_lines || 0;
+        
+        if (totalLines > 0) {
+          // Calculate start line to get the last N lines
+          const startLine = Math.max(1, totalLines - linesToLoad + 1);
+          
+          // Fetch the last lines
+          const tailResponse = await fetch(
+            `${file.server.url}/files/${file.path}/content?start_line=${startLine}&page_size=${linesToLoad}&user=${encodeURIComponent(file.server.username)}`
+          );
+          
+          if (tailResponse.ok) {
+            const tailData = await tailResponse.json();
+            if (tailData.content && Array.isArray(tailData.content)) {
+              setLines(tailData.content);
+              setHasInitialLoad(true);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load initial lines:', err);
+    }
+  }, [file, hasInitialLoad]);
+
   const connectToTail = useCallback(() => {
-    if (!file) return;
+    if (!file || isStopped) return;
 
     disconnectFromTail();
 
@@ -57,7 +103,7 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
       };
 
       eventSource.onmessage = (event) => {
-        if (!isPaused) {
+        if (!isPaused && !isStopped) {
           try {
             const line = JSON.parse(event.data);
             setLines((prevLines) => [...prevLines, line]);
@@ -78,11 +124,15 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to connect to tail stream');
     }
-  }, [file, isPaused]);
+  }, [file, isPaused, isStopped]);
 
   useEffect(() => {
-    if (open && file && !isPaused) {
-      connectToTail();
+    if (open && file && !isStopped) {
+      loadInitialLines().then(() => {
+        if (!isPaused) {
+          connectToTail();
+        }
+      });
     } else {
       disconnectFromTail();
     }
@@ -90,7 +140,7 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
     return () => {
       disconnectFromTail();
     };
-  }, [open, file, isPaused, connectToTail]);
+  }, [open, file, isPaused, isStopped, connectToTail, loadInitialLines]);
 
   useEffect(() => {
     if (autoScroll && contentRef.current) {
@@ -106,6 +156,19 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
     setIsPaused(!isPaused);
   };
 
+  const handleStop = () => {
+    setIsStopped(true);
+    disconnectFromTail();
+  };
+
+  const handleRestart = () => {
+    setIsStopped(false);
+    setIsPaused(false);
+    setHasInitialLoad(false);
+    setLines([]);
+    setError(null);
+  };
+
   const handleAutoScrollToggle = () => {
     setAutoScroll(!autoScroll);
   };
@@ -115,6 +178,8 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
     setLines([]);
     setError(null);
     setIsPaused(false);
+    setIsStopped(false);
+    setHasInitialLoad(false);
     onClose();
   };
 
@@ -143,13 +208,23 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
         </Toolbar>
       </AppBar>
 
-      <Toolbar variant="dense" sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Box display="flex" alignItems="center" gap={2} width="100%">
-          <IconButton onClick={handlePauseToggle} disabled={!isConnected}>
-            {isPaused ? <PlayIcon /> : <PauseIcon />}
+      <Toolbar variant="dense" sx={{ borderBottom: 1, borderColor: 'divider', minHeight: 40 }}>
+        <Box display="flex" alignItems="center" gap={1} width="100%">
+          {!isStopped ? (
+            <IconButton onClick={handlePauseToggle} disabled={!isConnected} size="small">
+              {isPaused ? <PlayIcon /> : <PauseIcon />}
+            </IconButton>
+          ) : (
+            <IconButton onClick={handleRestart} size="small" color="primary">
+              <PlayIcon />
+            </IconButton>
+          )}
+
+          <IconButton onClick={handleStop} disabled={isStopped} size="small">
+            <StopIcon />
           </IconButton>
 
-          <IconButton onClick={handleClear}>
+          <IconButton onClick={handleClear} size="small">
             <ClearIcon />
           </IconButton>
 
@@ -162,6 +237,7 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
               />
             }
             label="Auto Scroll"
+            sx={{ fontSize: '0.875rem' }}
           />
 
           <Box flex={1} />
@@ -172,11 +248,11 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
                 width: 8,
                 height: 8,
                 borderRadius: '50%',
-                backgroundColor: isConnected ? 'success.main' : 'error.main',
+                backgroundColor: isConnected && !isStopped ? 'success.main' : 'error.main',
               }}
             />
-            <Typography variant="body2" color="textSecondary">
-              ({lines.length} lines)
+            <Typography variant="body2" color="textSecondary" fontSize="0.75rem">
+              {isStopped ? 'Stopped' : isConnected ? 'Connected' : 'Disconnected'} ({lines.length} lines)
             </Typography>
           </Box>
         </Box>
@@ -193,28 +269,27 @@ export const FileTail: React.FC<FileTailProps> = ({ file, open, onClose }) => {
           ref={contentRef}
           sx={{
             flex: 1,
-            m: 2,
-            p: 2,
+            m: 1,
+            p: 1,
             fontFamily: 'monospace',
-            fontSize: '0.875rem',
-            backgroundColor: '#1e1e1e',
-            color: '#ffffff',
+            fontSize: '0.8rem',
+            backgroundColor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
+            color: theme.palette.text.primary,
             overflow: 'auto',
           }}
         >
           {lines.length === 0 && !error && (
-            <Typography color="textSecondary" sx={{ fontFamily: 'monospace' }}>
-              Waiting for new lines...
+            <Typography color="textSecondary" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+              {isStopped ? 'Tail stopped. Click play to restart.' : 'Waiting for new lines...'}
             </Typography>
           )}
 
           {lines.map((line, index) => (
-            <Box key={index} sx={{ whiteSpace: 'pre-wrap', mb: 0.25 }}>
+            <Box key={index} sx={{ whiteSpace: 'pre-wrap', mb: 0.125 }}>
               <Typography
                 sx={{
                   fontFamily: 'monospace',
-                  fontSize: '0.875rem',
-                  color: '#ffffff',
+                  fontSize: '0.8rem',
                 }}
               >
                 {line}

@@ -8,6 +8,7 @@ import {
   Paper,
   Pagination,
   TextField,
+  useTheme,
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -29,6 +30,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, open, onClose }) =
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
   const [api, setApi] = useState<LogViewAPI | null>(null);
+  const theme = useTheme();
 
   useEffect(() => {
     if (file) {
@@ -151,23 +153,25 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, open, onClose }) =
           <Paper
             sx={{
               flex: 1,
-              m: 2,
-              p: 2,
+              m: 1,
+              p: 1,
               fontFamily: 'monospace',
-              fontSize: '0.875rem',
-              backgroundColor: '#f5f5f5',
+              fontSize: '0.8rem',
+              backgroundColor: theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50',
               overflow: 'auto',
             }}
           >
             {content.content.map((line, index) => (
-              <Box key={index} sx={{ whiteSpace: 'pre-wrap', mb: 0.5 }}>
+              <Box key={index} sx={{ whiteSpace: 'pre-wrap', mb: 0.25 }}>
                 <Typography
                   component="span"
                   sx={{
                     color: 'text.secondary',
-                    mr: 2,
+                    mr: 1.5,
                     fontFamily: 'monospace',
-                    fontSize: '0.75rem',
+                    fontSize: '0.7rem',
+                    minWidth: '4ch',
+                    display: 'inline-block',
                   }}
                 >
                   {content.start_line + index}:
@@ -176,7 +180,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, open, onClose }) =
                   component="span"
                   sx={{
                     fontFamily: 'monospace',
-                    fontSize: '0.875rem',
+                    fontSize: '0.8rem',
                   }}
                 >
                   {line}
@@ -188,7 +192,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, open, onClose }) =
       </Box>
 
       {content && totalPages > 1 && (
-        <Box sx={{ borderTop: 1, borderColor: 'divider', py: 2, display: 'flex', justifyContent: 'center' }}>
+        <Box sx={{ borderTop: 1, borderColor: 'divider', py: 1, display: 'flex', justifyContent: 'center' }}>
           <Pagination
             count={totalPages}
             page={currentPage}
@@ -196,6 +200,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, open, onClose }) =
             color="primary"
             showFirstButton
             showLastButton
+            size="small"
           />
         </Box>
       )}

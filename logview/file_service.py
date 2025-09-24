@@ -114,7 +114,7 @@ class FileService:
             directory: Directory path relative to base_path (default: root)
             
         Returns:
-            List of FileInfo objects the user can access
+            List of FileInfo objects the user can access (files only, no directories)
             
         Raises:
             HTTPException: If directory doesn't exist or access is denied
@@ -141,6 +141,21 @@ class FileService:
         
         try:
             for item in dir_path.iterdir():
+                # Skip directories - only process files
+                if not item.is_file():
+                    continue
+                    
+                # Check for symbolic links and validate they don't point outside base_path
+                if item.is_symlink():
+                    try:
+                        # Resolve the symlink to its target
+                        resolved_item = item.resolve()
+                        # Ensure the resolved path is still within base_path
+                        resolved_item.relative_to(self.base_path.resolve())
+                    except (ValueError, OSError):
+                        # Symlink points outside base_path or cannot be resolved - skip it
+                        continue
+                
                 relative_path = self._get_relative_path(item)
                 
                 # Check if user has access to this file
@@ -200,6 +215,21 @@ class FileService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Path is not a file",
             )
+        
+        # Check for symbolic links and validate they don't point outside base_path
+        if absolute_path.is_symlink():
+            try:
+                # Resolve the symlink to its target
+                resolved_path = absolute_path.resolve()
+                # Ensure the resolved path is still within base_path
+                resolved_path.relative_to(self.base_path.resolve())
+                # Update absolute_path to the resolved path for further processing
+                absolute_path = resolved_path
+            except (ValueError, OSError):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Symbolic link points outside allowed base directory",
+                )
         
         if absolute_path.stat().st_size > settings.max_file_size:
             raise HTTPException(
@@ -274,6 +304,21 @@ class FileService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Path is not a file",
             )
+        
+        # Check for symbolic links and validate they don't point outside base_path
+        if absolute_path.is_symlink():
+            try:
+                # Resolve the symlink to its target
+                resolved_path = absolute_path.resolve()
+                # Ensure the resolved path is still within base_path
+                resolved_path.relative_to(self.base_path.resolve())
+                # Update absolute_path to the resolved path for further processing
+                absolute_path = resolved_path
+            except (ValueError, OSError):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Symbolic link points outside allowed base directory",
+                )
         
         try:
             with open(absolute_path, 'r', encoding='utf-8', errors='replace') as f:

@@ -112,8 +112,8 @@ export const FileList: React.FC<FileListProps> = ({
   }
 
   return (
-    <TableContainer component={Paper}>
-      <Table>
+    <TableContainer component={Paper} sx={{ mb: 2 }}>
+      <Table size="small">
         <TableHead>
           <TableRow>
             <TableCell>
@@ -171,14 +171,14 @@ export const FileList: React.FC<FileListProps> = ({
                 </Typography>
               </TableCell>
               <TableCell align="center">
-                <Box display="flex" gap={1} justifyContent="center">
+                <Box display="flex" gap={0.5} justifyContent="center">
                   <Tooltip title="Download">
                     <IconButton
                       size="small"
                       onClick={() => onDownload(file)}
                       color="primary"
                     >
-                      <DownloadIcon />
+                      <DownloadIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="View">
@@ -187,7 +187,7 @@ export const FileList: React.FC<FileListProps> = ({
                       onClick={() => onView(file)}
                       color="secondary"
                     >
-                      <ViewIcon />
+                      <ViewIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Tail">
@@ -196,7 +196,7 @@ export const FileList: React.FC<FileListProps> = ({
                       onClick={() => onTail(file)}
                       color="success"
                     >
-                      <TailIcon />
+                      <TailIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                 </Box>
@@ -206,8 +206,8 @@ export const FileList: React.FC<FileListProps> = ({
         </TableBody>
       </Table>
       {sortedFiles.length === 0 && (
-        <Box display="flex" justifyContent="center" p={4}>
-          <Typography color="textSecondary">
+        <Box display="flex" justifyContent="center" p={3}>
+          <Typography color="textSecondary" variant="body2">
             No files found. Check your server configurations and user permissions.
           </Typography>
         </Box>
