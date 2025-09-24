@@ -16,6 +16,10 @@ export interface ServerConfig {
   username: string;
 }
 
+export interface FrontendConfig {
+  servers: ServerConfig[];
+}
+
 export interface FileWithServer extends FileInfo {
   server: ServerConfig;
 }

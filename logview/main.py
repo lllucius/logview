@@ -150,6 +150,36 @@ async def health_check() -> Dict[str, str]:
     return {"status": "healthy"}
 
 
+@app.get("/config.json")
+async def get_frontend_config(request: Request) -> Dict:
+    """Get frontend configuration.
+    
+    Returns:
+        Frontend configuration with server information
+    """
+    # Determine the appropriate URL for the frontend
+    # If accessed via localhost or 127.0.0.1, use that. Otherwise use the request's origin.
+    host_header = request.headers.get("host", "")
+    if "localhost" in host_header or "127.0.0.1" in host_header:
+        base_url = f"http://{host_header}"
+    else:
+        # For production or when accessed via external IP, use the origin
+        base_url = f"{request.url.scheme}://{request.headers.get('host', 'localhost:8000')}"
+    
+    # Create frontend-compatible config from backend config  
+    frontend_config = {
+        "servers": [
+            {
+                "id": "default",
+                "name": "Log Server", 
+                "url": base_url,
+                "username": "admin"  # This should ideally come from authentication
+            }
+        ]
+    }
+    return frontend_config
+
+
 @app.get("/user", response_model=UserInfoResponse)
 async def get_user_info(
     request: Request,
