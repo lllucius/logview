@@ -1,6 +1,7 @@
 """Main FastAPI application for LogView."""
 
 import json
+import logging
 from typing import Dict, List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
@@ -9,8 +10,12 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from .auth import get_current_user, get_current_user_sse, require_file_access, user_header_auth
-from .config import get_user_groups, settings
+from .config import app_config, get_user_groups, settings
 from .file_service import FileInfo, file_service
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class FileListResponse(BaseModel):
@@ -78,11 +83,47 @@ app = FastAPI(
 # Add CORS middleware to allow frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify actual frontend origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=app_config.cors.allow_origins,
+    allow_credentials=app_config.cors.allow_credentials,
+    allow_methods=app_config.cors.allow_methods,
+    allow_headers=app_config.cors.allow_headers,
 )
+
+
+# Add middleware to log failed requests
+@app.middleware("http")
+async def log_failed_requests(request: Request, call_next):
+    """Log failed requests with reason."""
+    response = await call_next(request)
+    
+    # Log failed requests (4xx and 5xx status codes)
+    if response.status_code >= 400:
+        user = request.headers.get(settings.auth_header, "unknown")
+        logger.warning(
+            f"Failed request: {request.method} {request.url.path} - "
+            f"Status: {response.status_code} - User: {user} - "
+            f"Client: {request.client.host if request.client else 'unknown'}"
+        )
+    
+    return response
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    """Custom handler for HTTP exceptions to log the reason."""
+    user = request.headers.get(settings.auth_header, "unknown")
+    logger.error(
+        f"HTTP {exc.status_code} error: {exc.detail} - "
+        f"Path: {request.url.path} - User: {user} - "
+        f"Client: {request.client.host if request.client else 'unknown'}"
+    )
+    
+    # Return the standard HTTPException response
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
 
 
 @app.get("/", response_model=Dict[str, str])

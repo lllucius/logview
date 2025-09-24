@@ -52,7 +52,6 @@ class FileInfo:
     def to_dict(self) -> Dict:
         """Convert to dictionary for API response."""
         return {
-            "path": self.relative_path,
             "name": self.name,
             "size": self.size,
             "modified_time": self.modified_time,

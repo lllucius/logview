@@ -1,21 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-
-  Box,
+  AppBar,
+  Toolbar,
+  IconButton,
   Typography,
+  Box,
   Paper,
   Pagination,
   TextField,
-  IconButton,
-  Toolbar,
   Divider,
+  Container,
 } from '@mui/material';
 import {
-  Close as CloseIcon,
+  ArrowBack as ArrowBackIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import { FileWithServer, FileContentResponse } from '../types';
@@ -85,35 +82,35 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, open, onClose }) =
 
   const totalPages = content ? Math.ceil(content.total_lines / pageSize) : 0;
 
+  if (!open || !file) return null;
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="lg"
-      fullWidth
-      PaperProps={{
-        sx: { height: '90vh' }
-      }}
-    >
-      <DialogTitle>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Box>
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <AppBar position="static">
+        <Toolbar>
+          <IconButton
+            edge="start"
+            color="inherit"
+            onClick={onClose}
+            sx={{ mr: 2 }}
+          >
+            <ArrowBackIcon />
+          </IconButton>
+          <Box sx={{ flexGrow: 1 }}>
             <Typography variant="h6" component="div">
-              {file?.name}
+              {file.name}
             </Typography>
-            <Typography variant="body2" color="textSecondary">
-              {file?.server.name} - {file?.path}
+            <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              {file.server.name}
             </Typography>
           </Box>
-          <IconButton onClick={onClose}>
-            <CloseIcon />
+          <IconButton color="inherit" onClick={handleRefresh} disabled={loading}>
+            <RefreshIcon />
           </IconButton>
-        </Box>
-      </DialogTitle>
+        </Toolbar>
+      </AppBar>
 
-      <Divider />
-
-      <Toolbar variant="dense">
+      <Toolbar variant="dense" sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Box display="flex" alignItems="center" gap={2} width="100%">
           <TextField
             label="Page Size"
@@ -136,12 +133,9 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, open, onClose }) =
           <IconButton onClick={handleRefresh} disabled={loading}>
             <RefreshIcon />
           </IconButton>
-        </Box>
       </Toolbar>
 
-      <Divider />
-
-      <DialogContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', p: 0 }}>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {loading && (
           <Box display="flex" justifyContent="center" alignItems="center" flex={1}>
             <Typography>Loading...</Typography>
@@ -158,7 +152,7 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, open, onClose }) =
           <Paper
             sx={{
               flex: 1,
-              m: 1,
+              m: 2,
               p: 2,
               fontFamily: 'monospace',
               fontSize: '0.875rem',
@@ -192,23 +186,20 @@ export const FileViewer: React.FC<FileViewerProps> = ({ file, open, onClose }) =
             ))}
           </Paper>
         )}
-      </DialogContent>
+      </Box>
 
       {content && totalPages > 1 && (
-        <>
-          <Divider />
-          <DialogActions sx={{ justifyContent: 'center', py: 2 }}>
-            <Pagination
-              count={totalPages}
-              page={currentPage}
-              onChange={handlePageChange}
-              color="primary"
-              showFirstButton
-              showLastButton
-            />
-          </DialogActions>
-        </>
+        <Box sx={{ borderTop: 1, borderColor: 'divider', py: 2, display: 'flex', justifyContent: 'center' }}>
+          <Pagination
+            count={totalPages}
+            page={currentPage}
+            onChange={handlePageChange}
+            color="primary"
+            showFirstButton
+            showLastButton
+          />
+        </Box>
       )}
-    </Dialog>
+    </Box>
   );
 };
