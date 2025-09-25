@@ -16,8 +16,7 @@
     "axios": "^1.12.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "typescript": "^5.9.2",
-    "web-vitals": "^5.1.0"
+    "typescript": "^5.9.2"
   },
   "scripts": {
     "dev": "vite",

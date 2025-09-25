@@ -38,16 +38,12 @@ export async function loadConfig(): Promise<FrontendConfig> {
     
     // Fallback to hardcoded config if injection fails
     const fallbackConfig: FrontendConfig = {
-      frontend: {
-        host: 'localhost',
-        port: 3000
-      },
       servers: [
         {
           id: 'default',
           name: 'Local Server',
           host: 'localhost',
-          port: 8000
+          port: 10000
         }
       ]
     };
@@ -90,6 +86,6 @@ export async function getFrontendConfig(): Promise<{host: string, port: number}>
   // Return configured frontend settings or defaults
   return config.frontend || {
     host: 'localhost',
-    port: 3000
+    port: 10001
   };
 }

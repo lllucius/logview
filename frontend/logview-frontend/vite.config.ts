@@ -14,16 +14,12 @@ function loadFrontendConfig() {
     console.warn('Could not load frontend-config.json, using default configuration')
     // Return default configuration
     return {
-      frontend: {
-        host: 'localhost',
-        port: 3000
-      },
       servers: [
         {
           id: 'default',
           name: 'Local Server',
           host: 'localhost',
-          port: 8000
+          port: 10000
         }
       ]
     }
@@ -36,8 +32,8 @@ const frontendConfig = loadFrontendConfig()
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 3000,
-    open: true,
+    port: 10001,
+    open: false,
   },
   build: {
     outDir: 'build',

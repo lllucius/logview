@@ -24,11 +24,6 @@ export interface FullServerConfig {
 }
 
 export interface FrontendConfig {
-  // Frontend serving configuration
-  frontend?: {
-    host: string;
-    port: number;
-  };
   // Backend servers to connect to
   servers: FullServerConfig[];
 }
