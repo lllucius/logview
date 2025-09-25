@@ -21,7 +21,7 @@ function convertToServerConfig(fullServer: FullServerConfig): ServerConfig {
 }
 
 /**
- * Load the frontend configuration from /config.json (static file)
+ * Load the frontend configuration (now injected at build time via Vite SSR)
  * @returns Promise<FrontendConfig>
  */
 export async function loadConfig(): Promise<FrontendConfig> {
@@ -30,17 +30,13 @@ export async function loadConfig(): Promise<FrontendConfig> {
   }
 
   try {
-    const response = await fetch('/config.json');
-    if (!response.ok) {
-      throw new Error(`Failed to load config: ${response.status}`);
-    }
-    
-    configCache = await response.json();
-    return configCache as FrontendConfig;
+    // Use the configuration injected at build time by Vite
+    configCache = __FRONTEND_CONFIG__;
+    return configCache;
   } catch (error) {
-    console.error('Failed to load config, using defaults:', error);
+    console.error('Failed to load injected config, using defaults:', error);
     
-    // Fallback to hardcoded config if loading fails
+    // Fallback to hardcoded config if injection fails
     const fallbackConfig: FrontendConfig = {
       frontend: {
         host: 'localhost',
