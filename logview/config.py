@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, model_validator
 
 
 class GroupConfig(BaseModel):
@@ -31,9 +31,19 @@ class CORSConfig(BaseModel):
     """CORS configuration."""
     
     allow_origins: List[str] = Field(default=["*"], description="Allowed origins for CORS")
-    allow_credentials: bool = Field(default=True, description="Allow credentials in CORS requests")
+    allow_credentials: bool = Field(default=False, description="Allow credentials in CORS requests")
     allow_methods: List[str] = Field(default=["*"], description="Allowed HTTP methods")
     allow_headers: List[str] = Field(default=["*"], description="Allowed HTTP headers")
+    
+    @model_validator(mode='after')
+    def validate_cors_configuration(self):
+        """Validate CORS configuration for security compliance."""
+        if self.allow_credentials and "*" in self.allow_origins:
+            raise ValueError(
+                "Cannot use 'allow_origins: [\"*\"]' with 'allow_credentials: true'. "
+                "Specify exact origins like ['http://localhost:3000'] or set 'allow_credentials: false'."
+            )
+        return self
 
 
 class ServerConfig(BaseModel):

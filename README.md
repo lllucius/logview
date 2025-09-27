@@ -57,7 +57,7 @@ LogView now uses JSON configuration instead of environment variables. Create a `
   ],
   "cors": {
     "allow_origins": ["*"],
-    "allow_credentials": true,
+    "allow_credentials": false,
     "allow_methods": ["*"],
     "allow_headers": ["*"]
   }
@@ -91,6 +91,18 @@ Each server can have multiple groups with different access patterns:
 - `allow_credentials`: Whether to allow credentials in CORS requests
 - `allow_methods`: Array of allowed HTTP methods
 - `allow_headers`: Array of allowed HTTP headers
+
+**Important CORS Note:**
+When `allow_credentials: true`, you cannot use `allow_origins: ["*"]`. You must specify the exact origins:
+```json
+"cors": {
+  "allow_origins": ["http://your-frontend-domain.com:3000"],
+  "allow_credentials": true,
+  "allow_methods": ["*"],
+  "allow_headers": ["*"]
+}
+```
+Alternatively, set `allow_credentials: false` to use `allow_origins: ["*"]`.
 
 ### Running the Application
 
